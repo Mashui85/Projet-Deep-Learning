@@ -16,8 +16,9 @@ if __name__ == '__main__':
         X_train, X_test, y_train, y_test, x = train_test_separation()
         
     if do_train:
-        model = train(X_train, X_test, y_train, y_test)
         print('training model')
+        model = train(X_train, X_test, y_train, y_test)
+        
 
     if do_test_estimation:
         print('doint test on model')

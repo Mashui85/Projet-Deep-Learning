@@ -18,20 +18,24 @@ def train_test_separation():
     paths, signals, sr_list = load_file()
     S_list = []
     for i in range(len(signals)):
-        S_list.append(STFTabs(signals[i], hop_length, win_length, window, n_fft))
+        S_list.append( STFTabs(signals[i], hop_length, win_length, window, n_fft))
 
   
 
     u,fs = librosa.load('babble_16k.wav',sr=fs)
     U = STFTabs(u,hop_length,win_length,window,n_fft)/90
 
-    x = add_noise(signals,u,-2) # On impose une valeur de SNR
-    X = STFTabs(x,hop_length,win_length,window,n_fft)/90
+    x_list = []
+    X_list = []
+    for i in range(len(signals)):
+
+        x_list.append(add_noise(signals[i],u,-2)) # On impose une valeur de SNR
+        X_list.append(STFTabs(x_list[i],hop_length,win_length,window,n_fft)/90)
 
     # X : données d'entrée, y : labels (ou valeurs cibles)
 
     X_train, X_test, y_train, y_test = train_test_split(
-    X, S, test_size=test_size, random_state=42, shuffle=True
+    X_list, S_list, test_size=test_size, random_state=42, shuffle=True
     )
     X_train = torch.from_numpy(X_train).float()
     y_train = torch.from_numpy(y_train).float()
