@@ -3,7 +3,6 @@ import numpy as np
 import os
 from os.path import basename, splitext, join
 import random
-import yann as pd
 
 def add_noise(s,noise,snr):
     """
