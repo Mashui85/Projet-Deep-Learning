@@ -11,12 +11,8 @@ do_test_estimation = 1
 
 if __name__ == '__main__':
     
-    if do_load: 
-        print('Loading audio files')
-        load_file()
-
     if do_tt_separation: 
-        print('doing train test separation')
+        print('loading files and doing train test separation')
         X_train, X_test, y_train, y_test, x = train_test_separation()
         
     if do_train:

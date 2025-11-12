@@ -16,13 +16,17 @@ def train_test_separation():
     test_size = 0.2
 
     paths, signals, sr_list = load_file()
-    S = STFTabs(signals,hop_length,win_length,window,n_fft)
+    S_list = []
+    for i in range(len(signals)):
+        S_list.append(STFTabs(signals[i], hop_length, win_length, window, n_fft))
+
+  
 
     u,fs = librosa.load('babble_16k.wav',sr=fs)
-    U = STFTabs(u,hop_length,win_length,window,n_fft)
+    U = STFTabs(u,hop_length,win_length,window,n_fft)/90
 
-    x = add_noise(signals,u,-2)
-    X = STFTabs(x,hop_length,win_length,window,n_fft)
+    x = add_noise(signals,u,-2) # On impose une valeur de SNR
+    X = STFTabs(x,hop_length,win_length,window,n_fft)/90
 
     # X : données d'entrée, y : labels (ou valeurs cibles)
 
@@ -93,6 +97,10 @@ def train(X_train, X_test, y_train, y_test):
     
 
 def test_estimation(x,model):
+    n_fft = 1024
+    hop_length = int(n_fft * 0.2)
+    window = 'hann'
+    win_length = n_fft
     X = STFTabs(x,hop_length,win_length,window,n_fft)
     X_pred_mag = model.predict(X)
     X_pred_mag = np.sqrt(np.exp(X_pred_mag))
