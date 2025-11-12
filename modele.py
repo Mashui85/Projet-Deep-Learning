@@ -25,7 +25,7 @@ def train_test_separation():
         else:    
             for j in d:
                 signals_sized.append(j)
-    print(len(signals_sized))
+    # print(len(signals_sized))
 
     signals_sized_arr = np.array(signals_sized)
     
