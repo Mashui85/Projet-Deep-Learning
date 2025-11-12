@@ -5,7 +5,7 @@ from func import STFTabs, add_noise
 from load_file import load_file
 import librosa
 from torch.utils.data import TensorDataset, DataLoader
-
+import numpy as np
 
 def train_test_separation(): 
     fs=16000
@@ -21,7 +21,7 @@ def train_test_separation():
     u,fs = librosa.load('babble_16k.wav',sr=fs)
     U = STFTabs(u,hop_length,win_length,window,n_fft)
 
-    x = add_noise(s,u,-2)
+    x = add_noise(signals,u,-2)
     X = STFTabs(x,hop_length,win_length,window,n_fft)
 
     # X : données d'entrée, y : labels (ou valeurs cibles)
@@ -33,7 +33,7 @@ def train_test_separation():
     y_train = torch.from_numpy(y_train).float()
     X_test  = torch.from_numpy(X_test).float()
     y_test  = torch.from_numpy(y_test).float()
-    return X_train, X_test, y_train, y_test
+    return X_train, X_test, y_train, y_test, x
 
 def train(X_train, X_test, y_train, y_test):
     batch_size = 256

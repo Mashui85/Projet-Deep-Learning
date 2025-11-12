@@ -4,10 +4,10 @@ from load_file import load_file
 from func import STFT_display
 
 # Valeurs pour verifier chaque blocs
-do_load = True
-do_tt_separation = True
-do_train = True
-do_test_estimation = True
+do_load = 1
+do_tt_separation = 1
+do_train = 1
+do_test_estimation = 1
 
 if __name__ == '__main__':
     
@@ -15,17 +15,14 @@ if __name__ == '__main__':
         print('Loading audio files')
         load_file()
 
-    if do_tt_separation(): 
+    if do_tt_separation: 
         print('doing train test separation')
-    
+        X_train, X_test, y_train, y_test, x = train_test_separation()
+        
     if do_train:
-        train_ind, test_ind = train_test_split(range(nb_sentences),test_size=0.10)
-        np.save(output_dir + '/train_ind.npy',train_ind)
-        np.save(output_dir + '/test_ind.npy',test_ind)
-        print('Train MLP regressor')
-        do_train(train_ind)
+        model = train(X_train, X_test, y_train, y_test)
+        print('training model')
 
-    if step_test:
-        print('MLP-based regression and audio synthesis')
-        test_ind = np.load(output_dir + '/test_ind.npy')
-        do_test(test_ind)
+    if do_test_estimation:
+        print('doint test on model')
+        test_estimation(x, model)

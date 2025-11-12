@@ -4,7 +4,6 @@ import os
 from os.path import basename, splitext, join
 from pathlib import Path
 import numpy as np
-from func import extract_stft
 
 #Charge les donnees des fichiers audio et les normalise
 def load_file():
