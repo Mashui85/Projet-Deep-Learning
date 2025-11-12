@@ -33,15 +33,17 @@ def train_test_separation():
         X_list.append(STFTabs(x_list[i],hop_length,win_length,window,n_fft)/90)
 
     # X : données d'entrée, y : labels (ou valeurs cibles)
+    S_array = np.array(S_list)
+    X_array = np.array(X_list)
 
     X_train, X_test, y_train, y_test = train_test_split(
-    X_list, S_list, test_size=test_size, random_state=42, shuffle=True
+    X_array, S_array, test_size=test_size, random_state=42, shuffle=True
     )
     X_train = torch.from_numpy(X_train).float()
     y_train = torch.from_numpy(y_train).float()
     X_test  = torch.from_numpy(X_test).float()
     y_test  = torch.from_numpy(y_test).float()
-    return X_train, X_test, y_train, y_test, x
+    return X_train, X_test, y_train, y_test, x_list
 
 def train(X_train, X_test, y_train, y_test):
     batch_size = 256
