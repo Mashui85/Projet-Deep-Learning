@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from sklearn.model_selection import train_test_split
-from func import STFTabs, add_noise
+from func import STFTabs, add_noise, data_sized
 from load_file import load_file
 import librosa
 from torch.utils.data import TensorDataset, DataLoader
@@ -14,22 +14,35 @@ def train_test_separation():
     window = 'hann'
     win_length = n_fft
     test_size = 0.2
-
+    data_size = 5 # temps des signaux évalué
     paths, signals, sr_list = load_file()
     S_list = []
-    for i in range(len(signals)):
-        S_list.append( STFTabs(signals[i], hop_length, win_length, window, n_fft))
+    signals_sized = []
+    for i in range(len(signals)//10):
+        d = data_sized(signals[i],data_size)
+        if len(d)>100:
+            signals_sized.append(d)
+        else:    
+            for j in d:
+                signals_sized.append(j)
+    print(len(signals_sized))
 
-  
+    signals_sized_arr = np.array(signals_sized)
+    
+    for i in range(len(signals_sized)):
+
+        S_list.append( STFTabs(signals_sized[i], hop_length, win_length, window, n_fft))
+
+
 
     u,fs = librosa.load('babble_16k.wav',sr=fs)
     U = STFTabs(u,hop_length,win_length,window,n_fft)/90
 
     x_list = []
     X_list = []
-    for i in range(len(signals)):
-
-        x_list.append(add_noise(signals[i],u,-2)) # On impose une valeur de SNR
+    for i in range(len(signals_sized)):
+        
+        x_list.append(add_noise(signals_sized[i],u,-2)) # On impose une valeur de SNR
         X_list.append(STFTabs(x_list[i],hop_length,win_length,window,n_fft)/90)
 
     # X : données d'entrée, y : labels (ou valeurs cibles)
@@ -39,10 +52,10 @@ def train_test_separation():
     X_train, X_test, y_train, y_test = train_test_split(
     X_array, S_array, test_size=test_size, random_state=42, shuffle=True
     )
-    X_train = torch.from_numpy(X_train).float()
-    y_train = torch.from_numpy(y_train).float()
-    X_test  = torch.from_numpy(X_test).float()
-    y_test  = torch.from_numpy(y_test).float()
+    X_train = torch.from_numpy(X_train.astype(np.float32))
+    y_train = torch.from_numpy(y_train.astype(np.float32))
+    X_test  = torch.from_numpy(X_test.astype(np.float32))
+    y_test  = torch.from_numpy(y_test.astype(np.float32))
     return X_train, X_test, y_train, y_test, x_list
 
 def train(X_train, X_test, y_train, y_test):

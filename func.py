@@ -30,7 +30,7 @@ def data_sized(x,time_limit):
     min_limit = sample_limit/2
 
     if len(x) < sample_limit:
-        x_sized = x + np.zeros((sample_limit - len(x)),1)
+        x_sized = np.concatenate((x,np.zeros(sample_limit - len(x))))
     else:
         q = len(x)//sample_limit
         x_sized = x[:q*sample_limit]
