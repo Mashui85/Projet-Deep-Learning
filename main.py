@@ -4,7 +4,7 @@ from load_file import load_file
 from func import STFT_display
 
 # Valeurs pour verifier chaque blocs
-do_load = 1
+do_load = 0
 do_tt_separation = 1
 do_train = 0
 do_test_estimation = 0
