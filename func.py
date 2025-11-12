@@ -34,7 +34,7 @@ def data_sized(x,time_limit):
     else:
         q = len(x)//sample_limit
         x_sized = x[:q*sample_limit]
-        x_sized.reshape(q,sample_limit)
+        x_sized = x_sized.reshape((q,sample_limit))
     return x_sized
 
 
