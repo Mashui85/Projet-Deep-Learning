@@ -132,7 +132,8 @@ def test_estimation(x,model):
     hop_length = int(n_fft * 0.2)
     window = 'hann'
     win_length = n_fft
-    X = STFTabs(x,hop_length,win_length,window,n_fft)*90
+    X = STFTabs(x,hop_length,win_length,window,n_fft)/90.0
+    F,T = X.shape
 
     mag = np.abs(X)
     eps = 1e-8
@@ -143,7 +144,7 @@ def test_estimation(x,model):
     X_in = torch.from_numpy(X_in).to(device)
 
     with torch.no_grad():
-        X_pred_features = model(X_in)
+        X_pred_features = model(X_in) * 90.0
 
     X_pred_features = X_pred_features.cpu().numpy().T
     
@@ -153,7 +154,7 @@ def test_estimation(x,model):
     X_pred = X_pred_mag * phase_complex
 
     x_pred = librosa.istft(X_pred,hop_length=hop_length,n_fft=n_fft,window=window,win_length=win_length, length=len(x))
-    
+    print('caca',len(x_pred),len(x))
     return x_pred
 
     
