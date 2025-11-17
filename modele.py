@@ -60,6 +60,13 @@ def train_test_separation():
 
 def train(X_train, X_test, y_train, y_test):
     batch_size = 256
+
+    X_train = X_train.view(X_train.size(0), -1)
+    X_test  = X_test.view(X_test.size(0), -1)
+    y_train = y_train.view(y_train.size(0), -1)
+    y_test  = y_test.view(y_test.size(0), -1)
+
+
     train_loader = DataLoader(TensorDataset(X_train, y_train), batch_size=batch_size, shuffle=True)
     test_loader  = DataLoader(TensorDataset(X_test,  y_test),  batch_size=batch_size, shuffle=False)
     input_dim = X_train.shape[1]  # nombre de fréquences (colonnes)
@@ -82,7 +89,7 @@ def train(X_train, X_test, y_train, y_test):
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     epochs = 30
-    
+    print("Using device:", device)
     #Boucle d'entrainement 
     
     for epoch in range(1, epochs + 1):
@@ -121,7 +128,7 @@ def test_estimation(x,model):
     window = 'hann'
     win_length = n_fft
     X = STFTabs(x,hop_length,win_length,window,n_fft)
-    X_pred_mag = model.predict(X)
+    X_pred_mag = model(X)
     X_pred_mag = np.sqrt(np.exp(X_pred_mag))
     phase = np.angle(X)
     phase_complex = np.exp(1j * phase_n)
