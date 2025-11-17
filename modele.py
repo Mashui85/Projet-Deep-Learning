@@ -123,15 +123,33 @@ def train(X_train, X_test, y_train, y_test):
     
 
 def test_estimation(x,model):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = model.to(device)
+    model.eval()
+
+
     n_fft = 1024
     hop_length = int(n_fft * 0.2)
     window = 'hann'
     win_length = n_fft
-    X = STFTabs(x,hop_length,win_length,window,n_fft)
-    X_pred_mag = model(X)
-    X_pred_mag = np.sqrt(np.exp(X_pred_mag))
+    X = STFTabs(x,hop_length,win_length,window,n_fft)*90
+
+    mag = np.abs(X)
+    eps = 1e-8
+    X_features = np.log(mag**2 + eps)
+
+
+    X_in = X_features.T.astype(np.float32) 
+    X_in = torch.from_numpy(X_in).to(device)
+
+    with torch.no_grad():
+        X_pred_features = model(X_in)
+
+    X_pred_features = X_pred_features.cpu().numpy().T
+    
+    X_pred_mag = np.sqrt(np.exp(X_pred_features))
     phase = np.angle(X)
-    phase_complex = np.exp(1j * phase_n)
+    phase_complex = np.exp(1j * phase)
     X_pred = X_pred_mag * phase_complex
 
     x_pred = librosa.istft(X_pred,hop_length=hop_length,n_fft=n_fft,window=window,win_length=win_length, length=len(x))

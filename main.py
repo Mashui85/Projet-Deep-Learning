@@ -2,6 +2,7 @@ from load_file import load_file
 from modele import train_test_separation, train, test_estimation
 from load_file import load_file
 from func import STFT_display
+import soundfile as sf
 
 # Valeurs pour verifier chaque blocs
 do_load = 0
@@ -33,5 +34,5 @@ if __name__ == '__main__':
         print('doint test on model')
         x_pred = test_estimation(x[0], model)
         print(x_pred.shape)
-        sf.write("input.wav",x_pred, 16000)
+        sf.write("input.wav",x[0], 16000)
         sf.write("output.wav", x_pred, 16000)
