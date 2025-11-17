@@ -6,6 +6,7 @@ from load_file import load_file
 import librosa
 from torch.utils.data import TensorDataset, DataLoader
 import numpy as np
+import soundfile as sf
 
 def train_test_separation(): 
     fs=16000
@@ -18,7 +19,7 @@ def train_test_separation():
     paths, signals, sr_list = load_file()
     S_list = []
     signals_sized = []
-    for i in range(len(signals)//10):
+    for i in range(len(signals)):
         d = data_sized(signals[i],data_size)
         if len(d)>100:
             signals_sized.append(d)
@@ -30,20 +31,21 @@ def train_test_separation():
     signals_sized_arr = np.array(signals_sized)
     
     for i in range(len(signals_sized)):
-
-        S_list.append( STFTabs(signals_sized[i], hop_length, win_length, window, n_fft))
+        D,_ = STFTabs(signals_sized[i], hop_length, win_length, window, n_fft)
+        S_list.append(D)
 
 
 
     u,fs = librosa.load('babble_16k.wav',sr=fs)
-    U = STFTabs(u,hop_length,win_length,window,n_fft)/90
-
+    U,_ = STFTabs(u,hop_length,win_length,window,n_fft)
+    U = U/90
     x_list = []
     X_list = []
     for i in range(len(signals_sized)):
         
         x_list.append(add_noise(signals_sized[i],u,-2)) # On impose une valeur de SNR
-        X_list.append(STFTabs(x_list[i],hop_length,win_length,window,n_fft)/90)
+        D,_ = STFTabs(x_list[i],hop_length,win_length,window,n_fft)
+        X_list.append(D/90)
 
     # X : données d'entrée, y : labels (ou valeurs cibles)
     S_array = np.array(S_list)
@@ -52,6 +54,11 @@ def train_test_separation():
     X_train, X_test, y_train, y_test = train_test_split(
     X_array, S_array, test_size=test_size, random_state=42, shuffle=True
     )
+
+    print(X_train.shape)
+    pipi = librosa.istft(np.sqrt(np.exp(X_list[0]*90)),hop_length=hop_length,n_fft=n_fft,window=window,win_length=win_length, length=len(x_list[0]))
+    sf.write('test.wav',pipi,fs)
+
     X_train = torch.from_numpy(X_train.astype(np.float32))
     y_train = torch.from_numpy(y_train.astype(np.float32))
     X_test  = torch.from_numpy(X_test.astype(np.float32))
@@ -65,7 +72,6 @@ def train(X_train, X_test, y_train, y_test):
     X_test  = X_test.view(X_test.size(0), -1)
     y_train = y_train.view(y_train.size(0), -1)
     y_test  = y_test.view(y_test.size(0), -1)
-
 
     train_loader = DataLoader(TensorDataset(X_train, y_train), batch_size=batch_size, shuffle=True)
     test_loader  = DataLoader(TensorDataset(X_test,  y_test),  batch_size=batch_size, shuffle=False)
@@ -127,14 +133,13 @@ def test_estimation(x,model):
     model = model.to(device)
     model.eval()
 
-
     n_fft = 1024
     hop_length = int(n_fft * 0.2)
     window = 'hann'
     win_length = n_fft
-    X = STFTabs(x,hop_length,win_length,window,n_fft)/90.0
+    X,phase = STFTabs(x,hop_length,win_length,window,n_fft)
     F,T = X.shape
-
+    X = X/90.0
     mag = np.abs(X)
     eps = 1e-8
     X_features = np.log(mag**2 + eps)
@@ -149,9 +154,7 @@ def test_estimation(x,model):
     X_pred_features = X_pred_features.cpu().numpy().T
     
     X_pred_mag = np.sqrt(np.exp(X_pred_features))
-    phase = np.angle(X)
-    phase_complex = np.exp(1j * phase)
-    X_pred = X_pred_mag * phase_complex
+    X_pred = X_pred_mag * phase
 
     x_pred = librosa.istft(X_pred,hop_length=hop_length,n_fft=n_fft,window=window,win_length=win_length, length=len(x))
     print('caca',len(x_pred),len(x))
