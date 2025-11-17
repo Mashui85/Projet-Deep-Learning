@@ -19,12 +19,6 @@ def add_noise(s,noise,snr):
     noise = noise[noise_start_indice:noise_start_indice + s_len]
     Ps = np.mean(s**2)
     Pn = np.mean(noise**2)
-    if Pn < 1e-12:
-        noise = noise + 1e-6*np.random.randn(s_len)
-        Pn = np.mean(noise**2)
-    noise = noise * np.sqrt(Ps / Pn)
-    #print("Ps=", Ps) Verfication
-    #print("nouvelle puissance du bruit = ", np.mean(noise**2))
     x = s + alpha * noise
 
     return x

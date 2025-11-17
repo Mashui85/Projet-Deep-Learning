@@ -8,7 +8,7 @@ import numpy as np
 #Charge les donnees des fichiers audio et les normalise
 def load_file():
     output_dir = "./res/" #Output directory
-    source_audio_dir = "C:/Users/USER/Documents/Phelma/3A/LibriSpeech/dev-clean"
+    source_audio_dir = "C:/Users/USER/Documents/Phelma/3A/Projet Deep Learning/LibriSpeech/dev-clean"
     paths = [str(p) for p in Path(source_audio_dir).rglob("*")
             if p.suffix.lower() in (".wav", ".mp3", ".flac")]
 
