@@ -43,7 +43,7 @@ def train_test_separation():
     X_list = []
     for i in range(len(signals_sized)):
         
-        x_list.append(add_noise(signals_sized[i],u,5)) # On impose une valeur de SNR
+        x_list.append(add_noise(signals_sized[i],u,-2)) # On impose une valeur de SNR
         D = STFTabs(x_list[i],hop_length,win_length,window,n_fft)
         X_list.append(D/90)
 
@@ -75,7 +75,9 @@ def train(X_train, X_test, y_train, y_test):
 
     train_loader = DataLoader(TensorDataset(X_train, y_train), batch_size=batch_size, shuffle=True)
     test_loader  = DataLoader(TensorDataset(X_test,  y_test),  batch_size=batch_size, shuffle=False)
-    input_dim = X_train.shape[1]
+    input_dim = X_train.shape[1]  # nombre de fréquences (colonnes)
+    
+    #On definit le modele
     
     model = nn.Sequential(
         nn.Linear(input_dim, 512),
@@ -84,9 +86,9 @@ def train(X_train, X_test, y_train, y_test):
         nn.Linear(512, 256),
         nn.ReLU(),
         nn.Dropout(0.1),
-        nn.Linear(256, input_dim),  
-)
-
+        nn.Linear(256, input_dim),
+        nn.ReLU(),  # pour rester positif (magnitudes)
+    )
     #Initialisation
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = model.to(device)
@@ -94,6 +96,7 @@ def train(X_train, X_test, y_train, y_test):
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     epochs = 30
     print("Using device:", device)
+    #Boucle d'entrainement 
     
     for epoch in range(1, epochs + 1):
         model.train()
