@@ -52,6 +52,12 @@ def STFTabs(y,hop_length,win_length,window,n_fft):
     D = librosa.stft(y,n_fft=n_fft,hop_length=hop_length,window=window,win_length=win_length, center=True)
     D_db = np.log((np.abs(D)+1e-6)**2)
     
+    return D_db
+
+def STFTabs_phase(y,hop_length,win_length,window,n_fft):
+    D = librosa.stft(y,n_fft=n_fft,hop_length=hop_length,window=window,win_length=win_length, center=True)
+    D_db = np.log((np.abs(D)+1e-6)**2)
+    
     return D_db,np.exp(1j * np.angle(D))
 
 def STFT_display():
