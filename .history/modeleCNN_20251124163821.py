@@ -51,7 +51,7 @@ def train_test_separation():
     for i in range(len(signals_sized)):
         # On impose un SNR de -2 dB
         snr_db = np.random.uniform(-5, 10)  # par ex. entre -5 et 10 dB
-        x_noisy = add_noise(signals_sized[i], u, snr_db)
+        x_noisy = add_noise(signals_sized[i], u, -1)
         x_list.append(x_noisy)
 
         X_list.append(
@@ -80,50 +80,30 @@ def train_test_separation():
 class CnnDenoiser(nn.Module):
     def __init__(self):
         super().__init__()
-        self.entry = nn.Sequential(
-            nn.Conv2d(1, 32, 3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU()
-        )
+        self.conv1 = nn.Conv2d(1, 32, 3, padding=1)
+        self.bn1   = nn.BatchNorm2d(32)
 
-        self.block1 = self._res_block(32, 64)
-        self.block2 = self._res_block(64, 64)
-        self.block3 = self._res_block(64, 64)
+        self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
+        self.bn2   = nn.BatchNorm2d(64)
 
-        self.out = nn.Conv2d(64, 1, 1)
+        self.conv3 = nn.Conv2d(64, 64, 3, padding=1)
+        self.bn3   = nn.BatchNorm2d(64)
 
-    def _res_block(self, in_ch, out_ch):
-        return nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 3, padding=1),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(),
-            nn.Conv2d(out_ch, out_ch, 3, padding=1),
-            nn.BatchNorm2d(out_ch),
-        )
+        self.conv_out = nn.Conv2d(64, 1, 1)
 
-    def forward(self, x_in):  # x_in: (B, F, T)
-        x = x_in.unsqueeze(1)  # (B,1,F,T)
+    def forward(self, X_noisy_log_norm):
+        # X_noisy_log_norm : (B, F, T) = log(|X|^2)/90
+        x = X_noisy_log_norm.unsqueeze(1)  # (B,1,F,T)
 
-        x = self.entry(x)      # (B,32,F,T)
-
-        # Block 1
-        res = nn.functional.interpolate(x, size=x.shape[-2:], mode="nearest") if x.shape[1] != 64 else x
-        b1  = self.block1(x)
-        x   = torch.relu(b1 + res)
-
-        # Block 2
+        x = torch.relu(self.bn1(self.conv1(x)))
+        x = torch.relu(self.bn2(self.conv2(x)))
         res = x
-        b2  = self.block2(x)
-        x   = torch.relu(b2 + res)
+        x = torch.relu(self.bn3(self.conv3(x)))
+        x = x + res                           # skip
 
-        # Block 3
-        res = x
-        b3  = self.block3(x)
-        x   = torch.relu(b3 + res)
-
-        delta = self.out(x).squeeze(1)  # (B,F,T)
-        return x_in + delta             # résiduel
-
+        # Sortie = log(|S_clean|^2)/90, peut être négative
+        S_hat_log_norm = self.conv_out(x).squeeze(1)  # (B,F,T)
+        return S_hat_log_norm
 
 
 

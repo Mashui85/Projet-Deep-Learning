@@ -20,9 +20,9 @@ def train_test_separation():
     win_length = n_fft
     test_size = 0.2
     data_size = 5  # durée des segments (en secondes, j'imagine)
-    N = 270
+
     paths, signals, sr_list = load_file()
-    paths, signals, sr_list = paths[:N], signals[:N], sr_list[:N]
+
     S_list = []
     signals_sized = []
 
@@ -80,50 +80,30 @@ def train_test_separation():
 class CnnDenoiser(nn.Module):
     def __init__(self):
         super().__init__()
-        self.entry = nn.Sequential(
-            nn.Conv2d(1, 32, 3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU()
-        )
+        self.conv1 = nn.Conv2d(1, 32, 3, padding=1)
+        self.bn1   = nn.BatchNorm2d(32)
 
-        self.block1 = self._res_block(32, 64)
-        self.block2 = self._res_block(64, 64)
-        self.block3 = self._res_block(64, 64)
+        self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
+        self.bn2   = nn.BatchNorm2d(64)
 
-        self.out = nn.Conv2d(64, 1, 1)
+        self.conv3 = nn.Conv2d(64, 64, 3, padding=1)
+        self.bn3   = nn.BatchNorm2d(64)
 
-    def _res_block(self, in_ch, out_ch):
-        return nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 3, padding=1),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(),
-            nn.Conv2d(out_ch, out_ch, 3, padding=1),
-            nn.BatchNorm2d(out_ch),
-        )
+        self.conv_out = nn.Conv2d(64, 1, 1)
 
-    def forward(self, x_in):  # x_in: (B, F, T)
-        x = x_in.unsqueeze(1)  # (B,1,F,T)
+    def forward(self, X_noisy_log_norm):
+        # X_noisy_log_norm : (B, F, T) = log(|X|^2)/90
+        x = X_noisy_log_norm.unsqueeze(1)  # (B,1,F,T)
 
-        x = self.entry(x)      # (B,32,F,T)
-
-        # Block 1
-        res = nn.functional.interpolate(x, size=x.shape[-2:], mode="nearest") if x.shape[1] != 64 else x
-        b1  = self.block1(x)
-        x   = torch.relu(b1 + res)
-
-        # Block 2
+        x = torch.relu(self.bn1(self.conv1(x)))
+        x = torch.relu(self.bn2(self.conv2(x)))
         res = x
-        b2  = self.block2(x)
-        x   = torch.relu(b2 + res)
+        x = torch.relu(self.bn3(self.conv3(x)))
+        x = x + res                           # skip
 
-        # Block 3
-        res = x
-        b3  = self.block3(x)
-        x   = torch.relu(b3 + res)
-
-        delta = self.out(x).squeeze(1)  # (B,F,T)
-        return x_in + delta             # résiduel
-
+        # Sortie = log(|S_clean|^2)/90, peut être négative
+        S_hat_log_norm = self.conv_out(x).squeeze(1)  # (B,F,T)
+        return S_hat_log_norm
 
 
 
@@ -190,6 +170,10 @@ def trainCNN(X_train, X_test, y_train, y_test, batch_size=16, epochs=30):
 # 4. Estimation sur un signal temporel
 # ---------------------------
 def test_estimationCNN(x, model):
+    """
+    x : signal audio 1D (noisy)
+    model : CnnDenoiser entraîné
+    """
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = model.to(device)
     model.eval()
@@ -200,30 +184,29 @@ def test_estimationCNN(x, model):
     window = 'hann'
     win_length = n_fft
 
-    # 1) log(|X|^2) + phase, même représentation qu'au train
-    X_log, phase = STFTabs_phase(x, hop_length, win_length, window, n_fft)  # (F,T)
+    # STFT complexe pour récupérer la phase
+    X_complex = librosa.stft(
+        x,
+        n_fft=n_fft,
+        hop_length=hop_length,
+        win_length=win_length,
+        window=window
+    )
 
-    # 2) normalisation /90
-    X_in = (X_log / 90.0).astype(np.float32)  # (F,T)
+    #mag_noisy = np.abs(X_complex)      # (F, T)
+    phase = np.angle(X_complex)       # (F, T)
+    X_log, phase = STFTabs_phase(x, hop_length, win_length, window, n_fft)
+    # Normalisation cohérente avec le train : /90
+    X_in = (X_log / 90.0).astype(np.float32)  # (F, T)
 
-    X_in_torch = torch.from_numpy(X_in).unsqueeze(0).to(device)  # (1,F,T)
+    X_in_torch = torch.from_numpy(X_in).unsqueeze(0).to(device)  # (1, F, T)
 
-    # 3) passage dans le CNN : sortie = log(|S_hat|^2)/90
     with torch.no_grad():
-        S_hat_log_norm = model(X_in_torch)   # (1,F,T)
+        S_hat_mag = model(X_in_torch)   # (1, F, T)
 
-    S_hat_log_norm = S_hat_log_norm.cpu().numpy()[0]  # (F,T)
+    S_hat_mag = S_hat_mag.cpu().numpy()[0]  # (F, T)
 
-    # 4) dénormalisation : on revient à log(|S_hat|^2)
-    S_hat_log = S_hat_log_norm * 90.0
-
-    # 5) clamp pour éviter les débordements numériques
-    S_hat_log = np.clip(S_hat_log, -200, 50)
-
-    # 6) magnitude = sqrt(exp(log(|S_hat|^2)))
-    S_hat_mag = np.sqrt(np.exp(S_hat_log))  # (F,T)
-
-    # 7) reconstruction complexe avec la phase du signal bruité
+    # Reconstruction complexe avec phase du signal bruité
     phase_complex = np.exp(1j * phase)
     S_hat_complex = S_hat_mag * phase_complex
 
