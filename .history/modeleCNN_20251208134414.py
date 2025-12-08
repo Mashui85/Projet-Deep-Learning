@@ -125,6 +125,7 @@ class CnnDenoiser(nn.Module):
 
 
 
+
 # ---------------------------
 # 3. Entraînement du CNN
 # ---------------------------
