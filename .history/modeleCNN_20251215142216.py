@@ -31,6 +31,8 @@ def train_test_separation():
             d = [np.array(d)]
         for seg in d:
             signals_sized.append(seg)
+        for seg in d:
+            signals_sized.append(seg)
 
     # Bruit babble
     u, fs = librosa.load('babble_16k.wav', sr=fs)
@@ -40,9 +42,6 @@ def train_test_separation():
     x_list = []
 
     for seg in signals_sized:
-        seg = np.asarray(seg)
-        if seg.ndim != 1:
-            continue
         if len(seg) < fs:   # < 1s
             continue
         if np.mean(seg**2) < 1e-6:  # trop silencieux

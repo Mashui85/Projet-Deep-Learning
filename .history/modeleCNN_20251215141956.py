@@ -40,9 +40,6 @@ def train_test_separation():
     x_list = []
 
     for seg in signals_sized:
-        seg = np.asarray(seg)
-        if seg.ndim != 1:
-            continue
         if len(seg) < fs:   # < 1s
             continue
         if np.mean(seg**2) < 1e-6:  # trop silencieux

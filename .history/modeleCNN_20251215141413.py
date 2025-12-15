@@ -25,10 +25,6 @@ def train_test_separation():
     # On découpe les signaux
     for i in range(len(signals) // 10):
         d = data_sized(signals[i], data_size)
-        if isinstance(d, np.ndarray):
-            d = [d]
-        elif isinstance(d, list) and len(d) > 0 and np.isscalar(d[0]):
-            d = [np.array(d)]
         for seg in d:
             signals_sized.append(seg)
 
@@ -40,9 +36,6 @@ def train_test_separation():
     x_list = []
 
     for seg in signals_sized:
-        seg = np.asarray(seg)
-        if seg.ndim != 1:
-            continue
         if len(seg) < fs:   # < 1s
             continue
         if np.mean(seg**2) < 1e-6:  # trop silencieux

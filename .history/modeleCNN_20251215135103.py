@@ -18,49 +18,47 @@ def train_test_separation():
     win_length = n_fft
     test_size = 0.2
     data_size = 5  # durée des segments
+    #N = 270
     paths, signals, sr_list = load_file()
-
+    #paths, signals, sr_list = paths[:N], signals[:N], sr_list[:N]
+    S_list = []
     signals_sized = []
 
     # On découpe les signaux
     for i in range(len(signals) // 10):
         d = data_sized(signals[i], data_size)
-        if isinstance(d, np.ndarray):
-            d = [d]
-        elif isinstance(d, list) and len(d) > 0 and np.isscalar(d[0]):
-            d = [np.array(d)]
         for seg in d:
             signals_sized.append(seg)
 
-    # Bruit babble
-    u, fs = librosa.load('babble_16k.wav', sr=fs)
 
-    S_list = []
-    X_list = []
-    x_list = []
-
-    for seg in signals_sized:
-        seg = np.asarray(seg)
-        if seg.ndim != 1:
-            continue
+    # Calcul des STFT propres
+    for i in range(len(signals_sized)):
+        seg = signals_sized[i]
         if len(seg) < fs:   # < 1s
             continue
         if np.mean(seg**2) < 1e-6:  # trop silencieux
             continue
 
-        # Clean
-        S = STFTabs(seg, hop_length, win_length, window, n_fft) / 90.0
-        S = np.clip(S, -3.0, 1.0)
+        S_list.append(
+            STFTabs(signals_sized[i], hop_length, win_length, window, n_fft)/90
+        )
 
-        # Noisy
-        snr_db = np.random.uniform(5, 15)
-        x_noisy = add_noise(seg, u, snr_db)
-        X = STFTabs(x_noisy, hop_length, win_length, window, n_fft) / 90.0
-        X = np.clip(X, -3.0, 1.0)
+    # Bruit babble
+    u, fs = librosa.load('babble_16k.wav', sr=fs)
+    U = STFTabs(u, hop_length, win_length, window, n_fft) / 90.0  # inutilisé mais ok
 
-        S_list.append(S)
-        X_list.append(X)
+    x_list = []
+    X_list = []
+
+    for i in range(len(signals_sized)):
+        # On impose un SNR de -2 dB
+        snr_db = np.random.uniform(5, 15)  # par ex. entre -5 et 10 dB
+        x_noisy = add_noise(signals_sized[i], u, snr_db)
         x_list.append(x_noisy)
+
+        X_list.append(
+            STFTabs(x_noisy, hop_length, win_length, window, n_fft) / 90.0
+        )
 
     S_array = np.array(S_list)  # (N, F, T)
     X_array = np.array(X_list)  # (N, F, T)
@@ -124,7 +122,6 @@ class CnnDenoiser(nn.Module):
         S_hat_log_norm = torch.clamp(S_hat_log_norm, -3.0, 1.0)
         return S_hat_log_norm
 
-
 # 3. Entraînement du CNN
 def trainCNN(X_train, X_test, y_train, y_test, batch_size=16, epochs=80):
     """
@@ -148,11 +145,7 @@ def trainCNN(X_train, X_test, y_train, y_test, batch_size=16, epochs=80):
     criterion = nn.SmoothL1Loss(beta=0.1)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-    def smooth_loss(Y):
-        return torch.mean(torch.abs(Y[:, :, 1:] - Y[:, :, :-1]))
-
     for epoch in range(1, epochs + 1):
-        # ----- TRAIN -----
         model.train()
         train_loss = 0.0
         for xb, yb in train_loader:
@@ -161,14 +154,18 @@ def trainCNN(X_train, X_test, y_train, y_test, batch_size=16, epochs=80):
 
             optimizer.zero_grad()
             y_pred = model(xb)  # (B, F, T)
+            def smooth_loss(Y):
+                return torch.mean(torch.abs(Y[:, :, 1:] - Y[:, :, :-1]))
+
             loss = criterion(y_pred, yb) + 0.05 * smooth_loss(y_pred)
+
+            #loss = criterion(y_pred, yb)
             loss.backward()
             optimizer.step()
 
             train_loss += loss.item() * xb.size(0)
         train_loss /= len(train_loader.dataset)
 
-        # ----- TEST -----
         model.eval()
         test_loss = 0.0
         with torch.no_grad():
@@ -197,32 +194,25 @@ def test_estimationCNN(x, model):
     window = 'hann'
     win_length = n_fft
 
-    # 1) log(|X|^2) + phase, même représentation qu'au train
     X_log, phase = STFTabs_phase(x, hop_length, win_length, window, n_fft)  # (F,T)
 
-    # 2) normalisation + clipping cohérent avec le train
-    X_in = np.clip(X_log / 90.0, -3.0, 1.0).astype(np.float32)  # (F,T)
+    X_in = (X_log / 90.0).astype(np.float32)  # (F,T)
 
     X_in_torch = torch.from_numpy(X_in).unsqueeze(0).to(device)  # (1,F,T)
 
-    # 3) passage dans le CNN
     with torch.no_grad():
         S_hat_log_norm = model(X_in_torch)   # (1,F,T)
 
     S_hat_log_norm = S_hat_log_norm.cpu().numpy()[0]  # (F,T)
-
-    # 4) mélange perceptif
-    beta = 0.3
+    beta = 0.3  # 0 = bruité pur, 1 = modèle pur
     S_hat_log_norm = (1 - beta) * X_in + beta * S_hat_log_norm
 
-    # 5) dénormalisation
     S_hat_log = S_hat_log_norm * 90.0
+
     S_hat_log = np.clip(S_hat_log, -200, 50)
 
-    # 6) magnitude
     S_hat_mag = np.sqrt(np.exp(S_hat_log))  # (F,T)
 
-    # 7) reconstruction complexe avec la phase bruitée
     phase_complex = np.exp(1j * phase)
     S_hat_complex = S_hat_mag * phase_complex
 
