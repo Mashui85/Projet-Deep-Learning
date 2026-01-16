@@ -5,8 +5,6 @@ from modeleMasqueCNN import (
 )
 import soundfile as sf
 import torch
-import numpy as np
-import matplotlib.pyplot as plt
 
 
 # Flags d'exécution
@@ -23,7 +21,7 @@ if __name__ == "__main__":
         print("[STEP 1] Loading data and building binary masks...")
         X_train, X_test, y_train, y_test, x_list = train_test_separation_masque()
 
-        print("[INFO] Dataset ready") 
+        print("[INFO] Dataset ready")
         print("  X_train :", X_train.shape, " (noisy log-norm)")
         print("  y_train :", y_train.shape, " (binary mask)")
         print("  X_test  :", X_test.shape)
@@ -40,28 +38,17 @@ if __name__ == "__main__":
     if do_train:
         print("=" * 60)
         print("[STEP 2] Training CNN mask estimator...")
-        model, train_losses, test_losses = trainMasqueCNN(
+        model = trainMasqueCNN(
             X_train, X_test,
             y_train, y_test,
             batch_size=16,
-            epochs=150
+            epochs=80
         )
-
 
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         print(f"[INFO] Model trained — trainable parameters: {n_params:,}")
 
         print("=" * 60)
-        plt.figure()
-    plt.plot(train_losses, label="train")
-    plt.plot(test_losses, label="test")
-    plt.xlabel("Epoch")
-    plt.ylabel("BCE loss")
-    plt.title("Mask CNN — train/test loss")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
 
 
     # 3) Test sur un exemple temporel
@@ -77,19 +64,6 @@ if __name__ == "__main__":
             model,
             threshold=0.5
         )
-        fs = 16000
-        t = np.arange(len(noisy_example)) / fs
-
-        plt.figure()
-        plt.plot(t, noisy_example, label="Input (noisy)")
-        plt.plot(t, x_pred, label="Output (denoised)")
-        plt.xlabel("Time (s)")
-        plt.ylabel("Amplitude")
-        plt.title("Mask CNN — time-domain comparison")
-        plt.legend()
-        plt.grid(True)
-        plt.show()
-
 
         # noms explicites (important pour éviter confusion dans le rapport)
         input_wav  = "masque_input_noisy.wav"

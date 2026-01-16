@@ -10,104 +10,59 @@ import soundfile as sf
 
 
 def train_test_separation():
-    """
-    Prépare le jeu de données pour l'entraînement/test du MLP de débruitage en TF.
+    fs = 16000
+    n_fft = 1024
+    hop_length = int(n_fft * 0.2)
+    window = "hann"
+    win_length = n_fft
+    test_size = 0.2
+    data_size = 5
+    N = 270
 
-    Pipeline :
-    1) Charge N signaux de parole (fs=16 kHz) depuis le loader.
-    2) Découpe chaque signal en segments de durée fixe (data_size en secondes).
-       - Si la fonction renvoie beaucoup de segments, on garde la liste telle quelle,
-         sinon on "aplatit" pour obtenir une liste de segments (1 segment = 1 exemple temporel).
-    3) Calcule les spectrogrammes de magnitude (STFTabs) des segments propres (cibles),
-       puis normalise (division par 90.0) pour stabiliser les valeurs.
-    4) Charge un bruit de type babble et génère des observations bruitées via add_noise
-       (ici SNR fixé à 5 dB), puis calcule les spectrogrammes de magnitude bruités.
-    5) Convertit en tableaux NumPy et effectue un split train/test aléatoire.
-    6) (Optionnel) Reconstruit un exemple bruité en temporel pour vérifier rapidement
-       la cohérence du pipeline et écrit un .wav.
-    7) Convertit les données en tenseurs PyTorch float32.
-
-    Elle retourne : 
-    X_train : torch.Tensor
-        Spectrogrammes (features) bruités pour l'entraînement, shape ~ (Nex, F, T)
-    X_test : torch.Tensor
-        Spectrogrammes (features) bruités pour le test
-    y_train : torch.Tensor
-        Spectrogrammes (targets) propres pour l'entraînement
-    y_test : torch.Tensor
-        Spectrogrammes (targets) propres pour le test
-    x_list : list[np.ndarray]
-        Liste des segments temporels bruités (utile pour debug / écoute)
-    """
-    # Paramètres audio / STFT
-    
-    fs = 16000                      # fréquence d'échantillonnage cible
-    n_fft = 1024                    # taille FFT
-    hop_length = int(n_fft * 0.2)   # pas temporel (ici 20% de n_fft)
-    window = "hann"                 # fenêtre d'analyse
-    win_length = n_fft              # longueur de fenêtre
-    test_size = 0.2                 # proportion réservée au test
-    data_size = 5                   # durée des segments en secondes
-    N = 270                         # nombre max de fichiers utilisés (réduit la charge lorsqu'on fait les apprentissages sur nos machines)
-
-    # Chargement des fichiers audio
-    
     paths, signals, sr_list = load_file()
-    # Limite le dataset à N fichiers pour accélérer les itérations ( Pour les tests effectues sur nos machines)
     paths, signals, sr_list = paths[:N], signals[:N], sr_list[:N]
 
-    # Découpage en segments fixes
-    
     signals_sized = []
     for i in range(len(signals)):
-        # data_sized découpe un signal en segments de durée data_size (5 s pour nous)
         d = data_sized(signals[i], data_size)
-        
-        # Selon l'implémentation de data_sized, d peut être :
-        # - une liste/array de segments (longue)
-        # - ou une liste courte, auquel cas on ajoute segment par segment
         if len(d) > 100:
-            # cas "déjà bien segmenté" : on stocke l'ensemble
             signals_sized.append(d)
         else:
-            # cas "liste courte" : on aplatit pour obtenir une liste de segments 1D
             for j in d:
                 signals_sized.append(j)
 
-    # Construction des cibles : STFT(magnitude) du signal propre
-
     S_list = []
     for i in range(len(signals_sized)):
-        # STFTabs : magnitude (ou puissance) en domaine temps-fréquence
         D = STFTabs(signals_sized[i], hop_length, win_length, window, n_fft)
-        # Normalisation pour contraindre l'échelle et stabiliser l'apprentissage
         S_list.append(D / 90.0)
 
-    # Génération des entrées bruitées
-    
-    # Charge le bruit "babble" reéchantilloné à fs
     u, _ = librosa.load("babble_16k.wav", sr=fs)
 
-    x_list = []     # signaux temporels bruités
-    X_list = []     # spectrogrammes magnitude bruités
+    x_list = []
+    X_list = []
     for i in range(len(signals_sized)):
-        # add_noise : mélange bruit + parole à un SNR fixé (ici 5 dB)
         x_list.append(add_noise(signals_sized[i], u, 5))
         D = STFTabs(x_list[i], hop_length, win_length, window, n_fft)
         X_list.append(D / 90.0)
 
-    # Conversion en tableaux NumPy (Nex, F, T)
-    
-    S_array = np.array(S_list)      # targets
-    X_array = np.array(X_list)      # inputs 
+    S_array = np.array(S_list)
+    X_array = np.array(X_list)
 
-    # Split train/test
-    
     X_train, X_test, y_train, y_test = train_test_split(
         X_array, S_array, test_size=test_size, random_state=42, shuffle=True
     )
-    # Conversion en tenseurs PyTorch (float32)
-    
+
+    # petit sanity check audio (optionnel mais tu l'avais)
+    pipi = librosa.istft(
+        np.sqrt(np.exp(X_list[0] * 90.0)),
+        hop_length=hop_length,
+        n_fft=n_fft,
+        window=window,
+        win_length=win_length,
+        length=len(x_list[0]),
+    )
+    sf.write("test.wav", pipi, fs)
+
     X_train = torch.from_numpy(X_train.astype(np.float32))
     y_train = torch.from_numpy(y_train.astype(np.float32))
     X_test = torch.from_numpy(X_test.astype(np.float32))
@@ -116,7 +71,7 @@ def train_test_separation():
     return X_train, X_test, y_train, y_test, x_list
 
 
-def train(X_train, X_test, y_train, y_test, epochs=150, batch_size=256, lr=1e-3):
+def train(X_train, X_test, y_train, y_test, epochs=30, batch_size=256, lr=1e-3):
     # Ici on suppose que X_train est déjà en (N_trames, 513) via le main
     input_dim = X_train.shape[1]
 

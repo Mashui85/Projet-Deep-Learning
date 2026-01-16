@@ -36,17 +36,13 @@ def load_file():
             if p.suffix.lower() in (".wav", ".mp3", ".flac")]
     # Indication du volume de données chargé (utile pour le debug)
     print("Fichiers trouvés :", len(paths))
-    Fe = 16000          # fréquence d'échantillonnage cible
+    Fe = 16000
     signals = []
     sr_list = [] 
 
     for path in paths:
-        # Chargement + reechantillonage à Fe
         y, sr = librosa.load(path, sr=Fe)
-        # Normalisation en amplitude pour éviter de grosses variations d'échelle entre fichiers (robuste au silence)
-        peak = np.max(np.abs(y))
-        if peak > 1e-12:
-            y = y / peak
+        y = y / np.max(np.abs(y))
         signals.append(y)
         sr_list.append(sr)
     return paths, signals, sr_list

@@ -56,58 +56,47 @@ def train_test_separation():
     # Limite le dataset à N fichiers pour accélérer les itérations ( Pour les tests effectues sur nos machines)
     paths, signals, sr_list = paths[:N], signals[:N], sr_list[:N]
 
-    # Découpage en segments fixes
-    
     signals_sized = []
     for i in range(len(signals)):
-        # data_sized découpe un signal en segments de durée data_size (5 s pour nous)
         d = data_sized(signals[i], data_size)
-        
-        # Selon l'implémentation de data_sized, d peut être :
-        # - une liste/array de segments (longue)
-        # - ou une liste courte, auquel cas on ajoute segment par segment
         if len(d) > 100:
-            # cas "déjà bien segmenté" : on stocke l'ensemble
             signals_sized.append(d)
         else:
-            # cas "liste courte" : on aplatit pour obtenir une liste de segments 1D
             for j in d:
                 signals_sized.append(j)
 
-    # Construction des cibles : STFT(magnitude) du signal propre
-
     S_list = []
     for i in range(len(signals_sized)):
-        # STFTabs : magnitude (ou puissance) en domaine temps-fréquence
         D = STFTabs(signals_sized[i], hop_length, win_length, window, n_fft)
-        # Normalisation pour contraindre l'échelle et stabiliser l'apprentissage
         S_list.append(D / 90.0)
 
-    # Génération des entrées bruitées
-    
-    # Charge le bruit "babble" reéchantilloné à fs
     u, _ = librosa.load("babble_16k.wav", sr=fs)
 
-    x_list = []     # signaux temporels bruités
-    X_list = []     # spectrogrammes magnitude bruités
+    x_list = []
+    X_list = []
     for i in range(len(signals_sized)):
-        # add_noise : mélange bruit + parole à un SNR fixé (ici 5 dB)
         x_list.append(add_noise(signals_sized[i], u, 5))
         D = STFTabs(x_list[i], hop_length, win_length, window, n_fft)
         X_list.append(D / 90.0)
 
-    # Conversion en tableaux NumPy (Nex, F, T)
-    
-    S_array = np.array(S_list)      # targets
-    X_array = np.array(X_list)      # inputs 
+    S_array = np.array(S_list)
+    X_array = np.array(X_list)
 
-    # Split train/test
-    
     X_train, X_test, y_train, y_test = train_test_split(
         X_array, S_array, test_size=test_size, random_state=42, shuffle=True
     )
-    # Conversion en tenseurs PyTorch (float32)
-    
+
+    # petit sanity check audio (optionnel mais tu l'avais)
+    pipi = librosa.istft(
+        np.sqrt(np.exp(X_list[0] * 90.0)),
+        hop_length=hop_length,
+        n_fft=n_fft,
+        window=window,
+        win_length=win_length,
+        length=len(x_list[0]),
+    )
+    sf.write("test.wav", pipi, fs)
+
     X_train = torch.from_numpy(X_train.astype(np.float32))
     y_train = torch.from_numpy(y_train.astype(np.float32))
     X_test = torch.from_numpy(X_test.astype(np.float32))

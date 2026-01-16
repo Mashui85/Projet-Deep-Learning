@@ -1,7 +1,7 @@
 from modele import train_test_separation, train, test_estimation
 import soundfile as sf
 import matplotlib.pyplot as plt
-import numpy as np
+
 do_tt_separation = 1
 do_train = 1
 do_test_estimation = 1
@@ -41,16 +41,9 @@ if __name__ == "__main__":
         sf.write("input.wav", x[0], 16000)
         sf.write("output.wav", x_pred, 16000)
 
-        fs = 16000
-        t = np.arange(len(x[0])) / fs
-
         plt.figure()
-        plt.plot(t, x[0], label="Input (noisy)")
-        plt.plot(t, x_pred, label="Output (denoised)")
-        plt.xlabel("Time (s)")
-        plt.ylabel("Amplitude")
-        plt.title("MLP denoising – time-domain comparison")
+        plt.plot(x[0], label="input")
+        plt.plot(x_pred, label="output")
         plt.legend()
         plt.grid(True)
         plt.show()
-

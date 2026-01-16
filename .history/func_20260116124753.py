@@ -13,7 +13,7 @@ def add_noise(s,noise,snr):
     - On normalise le segment de bruit pour qu'il ait la même puissance moyenne que `s`,
       puis on applique un facteur `alpha = 10^{-snr/20}` pour obtenir le SNR souhaité.
 
-    Parametres
+    Parameters
     
     s : np.ndarray
         Signal de parole (1D).
@@ -54,102 +54,41 @@ def add_noise(s,noise,snr):
     # Mise à l'échelle du bruit pour égaliser la puissance avec celle du signal
     
     noise = noise * np.sqrt(Ps / Pn)
-    
-    # Mélange final : s + alpha * noise (alpha impose le SNR)
-    
     x = s + alpha * noise
 
     return x
 
 def data_sized(x,time_limit):
-    """
-    Met un signal audio à une durée fixe `time_limit` (en secondes) à Fs=16 kHz.
-
-    - Si le signal est plus court : padding par zéros.
-    - Si le signal est plus long : découpe en segments contigus de durée fixe.
-      Le reste (partie non multiple) est ignoré.
-
-    Parametres
-    x : np.ndarray
-        Signal audio 1D.
-    time_limit : float
-        Durée cible en secondes.
-
-    Retourne
-    x_sized : np.ndarray
-        - 1D si padding (len = Fs*time_limit)
-        - 2D si découpage (shape = (q, Fs*time_limit)), avec q = nombre de segments
+    """Fonction qui met la taille des signaux à time_limit sec
+    Ajoute des zéros si taille< time_limit sec et coupe le signal si > time_limit sec
     """
     Fs = 16000
-    
-    # nombre d'échantillons correspondant à time_limit
-    
     sample_limit = Fs * time_limit
-    
-    # Si le signal est trop court : padding pour obtenir exactement sample_limit
+    min_limit = sample_limit/2
 
     if len(x) < sample_limit:
         x_sized = np.concatenate((x,np.zeros(sample_limit - len(x))))
-    
-    # Sinon : découpage en segments entiers de longueur sample_limit
-    
     else:
-        q = len(x)//sample_limit                        # nombre de segments complets
-        x_sized = x[:q*sample_limit]                    # tronque pour multiple exact
-        x_sized = x_sized.reshape((q,sample_limit))     # q segments (q, L)
+        q = len(x)//sample_limit
+        x_sized = x[:q*sample_limit]
+        x_sized = x_sized.reshape((q,sample_limit))
     return x_sized
 
 
 
 
 def STFTabs(y,hop_length,win_length,window,n_fft):
-    """
-    Calcule une représentation temps-fréquence sous forme de log-puissance du module STFT.
-
-    - STFT complexe via librosa.stft
-    - Passage en puissance |D|^2 puis log, avec epsilon pour éviter log(0)
-
-    Retourne
-    
-    D_db : np.ndarray (complex->float)
-        Matrice (F, T) de log(|STFT(y)|^2 + eps).
-    """
-    
-    # STFT complexe : (F, T)
-    
     D = librosa.stft(y,n_fft=n_fft,hop_length=hop_length,window=window,win_length=win_length, center=True)
-    
-    # Log-puissance (stabilisée par epsilon)
-    
     D_db = np.log((np.abs(D)+1e-6)**2)
     
     return D_db
 
 def STFTabs_phase(y,hop_length,win_length,window,n_fft):
-    """
-    Calcule :
-    - la log-puissance du module STFT (feature amplitude)
-    - la phase sous forme d'un terme complexe unitaire exp(j*angle(D))
-
-    Elle est la pour pouvoir reconstruire un signal en combinant une magnitude estimée
-    avec la phase du signal bruité.
-
-    Retourne
-    D_db : np.ndarray
-        log(|D|^2 + eps), shape (F, T)
-    phase : np.ndarray (complex)
-        exp(j * angle(D)), shape (F, T)
-    """
-
     D = librosa.stft(y,n_fft=n_fft,hop_length=hop_length,window=window,win_length=win_length, center=True)
     D_db = np.log((np.abs(D)+1e-6)**2)
     
     return D_db,np.exp(1j * np.angle(D))
 
 def STFT_display():
-    """
-    Placeholder : fonction prévue pour afficher/diagnostiquer des spectrogrammes.
-    Non utilisée dans la version actuelle.
-    """
     pass
 

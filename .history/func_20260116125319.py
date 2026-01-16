@@ -134,7 +134,8 @@ def STFTabs_phase(y,hop_length,win_length,window,n_fft):
     Elle est la pour pouvoir reconstruire un signal en combinant une magnitude estimée
     avec la phase du signal bruité.
 
-    Retourne
+    Returns
+    -------
     D_db : np.ndarray
         log(|D|^2 + eps), shape (F, T)
     phase : np.ndarray (complex)
@@ -147,9 +148,5 @@ def STFTabs_phase(y,hop_length,win_length,window,n_fft):
     return D_db,np.exp(1j * np.angle(D))
 
 def STFT_display():
-    """
-    Placeholder : fonction prévue pour afficher/diagnostiquer des spectrogrammes.
-    Non utilisée dans la version actuelle.
-    """
     pass
 

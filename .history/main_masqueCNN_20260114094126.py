@@ -23,7 +23,7 @@ if __name__ == "__main__":
         print("[STEP 1] Loading data and building binary masks...")
         X_train, X_test, y_train, y_test, x_list = train_test_separation_masque()
 
-        print("[INFO] Dataset ready") 
+        print("[INFO] Dataset ready")
         print("  X_train :", X_train.shape, " (noisy log-norm)")
         print("  y_train :", y_train.shape, " (binary mask)")
         print("  X_test  :", X_test.shape)
@@ -44,7 +44,7 @@ if __name__ == "__main__":
             X_train, X_test,
             y_train, y_test,
             batch_size=16,
-            epochs=150
+            epochs=80
         )
 
 

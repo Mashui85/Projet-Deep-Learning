@@ -118,38 +118,16 @@ def STFTabs(y,hop_length,win_length,window,n_fft):
     # STFT complexe : (F, T)
     
     D = librosa.stft(y,n_fft=n_fft,hop_length=hop_length,window=window,win_length=win_length, center=True)
-    
-    # Log-puissance (stabilisée par epsilon)
-    
     D_db = np.log((np.abs(D)+1e-6)**2)
     
     return D_db
 
 def STFTabs_phase(y,hop_length,win_length,window,n_fft):
-    """
-    Calcule :
-    - la log-puissance du module STFT (feature amplitude)
-    - la phase sous forme d'un terme complexe unitaire exp(j*angle(D))
-
-    Elle est la pour pouvoir reconstruire un signal en combinant une magnitude estimée
-    avec la phase du signal bruité.
-
-    Retourne
-    D_db : np.ndarray
-        log(|D|^2 + eps), shape (F, T)
-    phase : np.ndarray (complex)
-        exp(j * angle(D)), shape (F, T)
-    """
-
     D = librosa.stft(y,n_fft=n_fft,hop_length=hop_length,window=window,win_length=win_length, center=True)
     D_db = np.log((np.abs(D)+1e-6)**2)
     
     return D_db,np.exp(1j * np.angle(D))
 
 def STFT_display():
-    """
-    Placeholder : fonction prévue pour afficher/diagnostiquer des spectrogrammes.
-    Non utilisée dans la version actuelle.
-    """
     pass
 

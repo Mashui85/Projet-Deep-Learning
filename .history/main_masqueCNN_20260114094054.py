@@ -23,7 +23,7 @@ if __name__ == "__main__":
         print("[STEP 1] Loading data and building binary masks...")
         X_train, X_test, y_train, y_test, x_list = train_test_separation_masque()
 
-        print("[INFO] Dataset ready") 
+        print("[INFO] Dataset ready")
         print("  X_train :", X_train.shape, " (noisy log-norm)")
         print("  y_train :", y_train.shape, " (binary mask)")
         print("  X_test  :", X_test.shape)
@@ -44,7 +44,7 @@ if __name__ == "__main__":
             X_train, X_test,
             y_train, y_test,
             batch_size=16,
-            epochs=150
+            epochs=80
         )
 
 
@@ -77,19 +77,6 @@ if __name__ == "__main__":
             model,
             threshold=0.5
         )
-        fs = 16000
-        t = np.arange(len(noisy_example)) / fs
-
-        plt.figure()
-        plt.plot(t, noisy_example, label="Input (noisy)")
-        plt.plot(t, x_pred, label="Output (denoised)")
-        plt.xlabel("Time (s)")
-        plt.ylabel("Amplitude")
-        plt.title("Mask CNN — time-domain comparison")
-        plt.legend()
-        plt.grid(True)
-        plt.show()
-
 
         # noms explicites (important pour éviter confusion dans le rapport)
         input_wav  = "masque_input_noisy.wav"

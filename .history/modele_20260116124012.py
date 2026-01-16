@@ -106,7 +106,6 @@ def train_test_separation():
     X_train, X_test, y_train, y_test = train_test_split(
         X_array, S_array, test_size=test_size, random_state=42, shuffle=True
     )
-    # Conversion en tenseurs PyTorch (float32)
     
     X_train = torch.from_numpy(X_train.astype(np.float32))
     y_train = torch.from_numpy(y_train.astype(np.float32))

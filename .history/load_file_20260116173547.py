@@ -43,7 +43,7 @@ def load_file():
     for path in paths:
         # Chargement + reechantillonage à Fe
         y, sr = librosa.load(path, sr=Fe)
-        # Normalisation en amplitude pour éviter de grosses variations d'échelle entre fichiers (robuste au silence)
+        # Normalisation en amplitude pour éviter de grosses variations d'échelle entre fichiers
         peak = np.max(np.abs(y))
         if peak > 1e-12:
             y = y / peak

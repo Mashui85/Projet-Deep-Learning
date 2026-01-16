@@ -101,13 +101,21 @@ def train_test_separation():
     S_array = np.array(S_list)      # targets
     X_array = np.array(X_list)      # inputs 
 
-    # Split train/test
-    
     X_train, X_test, y_train, y_test = train_test_split(
         X_array, S_array, test_size=test_size, random_state=42, shuffle=True
     )
-    # Conversion en tenseurs PyTorch (float32)
-    
+
+    # petit sanity check audio (optionnel mais tu l'avais)
+    pipi = librosa.istft(
+        np.sqrt(np.exp(X_list[0] * 90.0)),
+        hop_length=hop_length,
+        n_fft=n_fft,
+        window=window,
+        win_length=win_length,
+        length=len(x_list[0]),
+    )
+    sf.write("test.wav", pipi, fs)
+
     X_train = torch.from_numpy(X_train.astype(np.float32))
     y_train = torch.from_numpy(y_train.astype(np.float32))
     X_test = torch.from_numpy(X_test.astype(np.float32))

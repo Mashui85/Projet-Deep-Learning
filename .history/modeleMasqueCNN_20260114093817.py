@@ -141,7 +141,7 @@ class CnnMasker(nn.Module):
 # ------------------------------------------------------------
 # 3) Entraînement (BCEWithLogits) + régularisation temporelle
 # ------------------------------------------------------------
-def trainMasqueCNN(X_train, X_test, y_train, y_test, batch_size=16, epochs=150):
+def trainMasqueCNN(X_train, X_test, y_train, y_test, batch_size=16, epochs=80):
     """
     X_train : (N,F,T)  noisy log_norm
     y_train : (N,F,T)  masque binaire {0,1}

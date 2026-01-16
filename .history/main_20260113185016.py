@@ -1,7 +1,7 @@
 from modele import train_test_separation, train, test_estimation
 import soundfile as sf
 import matplotlib.pyplot as plt
-import numpy as np
+
 do_tt_separation = 1
 do_train = 1
 do_test_estimation = 1

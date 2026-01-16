@@ -30,23 +30,19 @@ def load_file():
     sr_list : list[int]
         Fréquences d'échantillonnage (vaut 16000 après re-echantillonage).
     """
-    # Répertoire dataset : recherche récursive de fichiers audio
+    output_dir = "./res/" #Output directory
     source_audio_dir = "C:/Users/USER/Documents/Phelma/3A/LibriSpeech/dev-clean"
     paths = [str(p) for p in Path(source_audio_dir).rglob("*")
             if p.suffix.lower() in (".wav", ".mp3", ".flac")]
-    # Indication du volume de données chargé (utile pour le debug)
+
     print("Fichiers trouvés :", len(paths))
-    Fe = 16000          # fréquence d'échantillonnage cible
+    Fe = 16000
     signals = []
     sr_list = [] 
 
     for path in paths:
-        # Chargement + reechantillonage à Fe
         y, sr = librosa.load(path, sr=Fe)
-        # Normalisation en amplitude pour éviter de grosses variations d'échelle entre fichiers (robuste au silence)
-        peak = np.max(np.abs(y))
-        if peak > 1e-12:
-            y = y / peak
+        y = y / np.max(np.abs(y))
         signals.append(y)
         sr_list.append(sr)
     return paths, signals, sr_list
